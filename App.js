@@ -1,112 +1,91 @@
-/**
- * Sample React Native App
- * https://github.com/facebook/react-native
- *
- * @format
- * @flow strict-local
- */
+import axios from 'axios';
+import React, {useState} from 'react';
+import {SafeAreaView, StyleSheet, StatusBar, View} from 'react-native';
+import SearchBarWithAutocomplete from './SearchBar';
 
-import React from 'react';
-import type {Node} from 'react';
-import {
-  SafeAreaView,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  useColorScheme,
-  View,
-} from 'react-native';
+const App = () => {
+  const [search, setSearch] = useState({term: '', fetchPredictions: false});
+  const {container, body} = styles;
+  const [predictions, setPredictions] = useState([]);
+  const [showPredictions, setShowPredictions] = useState(true);
 
-import {
-  Colors,
-  DebugInstructions,
-  Header,
-  LearnMoreLinks,
-  ReloadInstructions,
-} from 'react-native/Libraries/NewAppScreen';
+  const GOOGLE_PACES_API_BASE_URL =
+    'https://maps.googleapis.com/maps/api/place';
+  const GOOGLE_API_KEY = 'AIzaSyAA-noHKpgAcE8m5APIGqNVS28q3OLtxOM';
 
-const Section = ({children, title}): Node => {
-  const isDarkMode = useColorScheme() === 'dark';
-  return (
-    <View style={styles.sectionContainer}>
-      <Text
-        style={[
-          styles.sectionTitle,
-          {
-            color: isDarkMode ? Colors.white : Colors.black,
+  const onChangeText = async () => {
+    if (search.term.trim() === '') {
+      return;
+    }
+    if (!search.fetchPredictions) {
+      return;
+    }
+    const apiUrl = `${GOOGLE_PACES_API_BASE_URL}/autocomplete/json?key=${GOOGLE_API_KEY}&input=${search.term}`;
+    try {
+      const result = await axios.request({
+        method: 'post',
+        url: apiUrl,
+      });
+      if (result) {
+        const {data} = result;
+        console.log('coming here', result);
+        setPredictions(data);
+      }
+    } catch (e) {
+      console.log(e);
+    }
+  };
+
+  const onPredictionTapped = async (placeId, description) => {
+    const apiUrl = `${GOOGLE_PACES_API_BASE_URL}/details/json?key=${GOOGLE_API_KEY}&place_id=${placeId}`;
+    try {
+      const result = await axios.request({
+        method: 'post',
+        url: apiUrl,
+      });
+      if (result) {
+        const {
+          data: {
+            result: {
+              geometry: {location},
+            },
           },
-        ]}>
-        {title}
-      </Text>
-      <Text
-        style={[
-          styles.sectionDescription,
-          {
-            color: isDarkMode ? Colors.light : Colors.dark,
-          },
-        ]}>
-        {children}
-      </Text>
-    </View>
-  );
-};
-
-const App: () => Node = () => {
-  const isDarkMode = useColorScheme() === 'dark';
-
-  const backgroundStyle = {
-    backgroundColor: isDarkMode ? Colors.darker : Colors.lighter,
+        } = result;
+        const {lat, lng} = location;
+        setShowPredictions(false);
+        setSearch({term: description});
+      }
+    } catch (e) {
+      console.log(e);
+    }
   };
 
   return (
-    <SafeAreaView style={backgroundStyle}>
-      <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
-      <ScrollView
-        contentInsetAdjustmentBehavior="automatic"
-        style={backgroundStyle}>
-        <Header />
-        <View
-          style={{
-            backgroundColor: isDarkMode ? Colors.black : Colors.white,
-          }}>
-          <Section title="Step One">
-            Edit <Text style={styles.highlight}>App.js</Text> to change this
-            screen and then come back to see your edits.
-          </Section>
-          <Section title="See Your Changes">
-            <ReloadInstructions />
-          </Section>
-          <Section title="Debug">
-            <DebugInstructions />
-          </Section>
-          <Section title="Learn More">
-            Read the docs to discover what to do next:
-          </Section>
-          <LearnMoreLinks />
+    <>
+      <StatusBar barStyle="dark-content" />
+      <SafeAreaView style={container}>
+        <View style={body}>
+          <SearchBarWithAutocomplete
+            value={search.term}
+            onChangeText={text => {
+              setSearch({term: text, fetchPredictions: true});
+              onChangeText();
+            }}
+            showPredictions={showPredictions}
+            predictions={predictions}
+            onPredictionTapped={onPredictionTapped}
+          />
         </View>
-      </ScrollView>
-    </SafeAreaView>
+      </SafeAreaView>
+    </>
   );
 };
-
 const styles = StyleSheet.create({
-  sectionContainer: {
-    marginTop: 32,
-    paddingHorizontal: 24,
+  container: {
+    flex: 1,
   },
-  sectionTitle: {
-    fontSize: 24,
-    fontWeight: '600',
-  },
-  sectionDescription: {
-    marginTop: 8,
-    fontSize: 18,
-    fontWeight: '400',
-  },
-  highlight: {
-    fontWeight: '700',
+  body: {
+    paddingHorizontal: 20,
   },
 });
-
 export default App;
